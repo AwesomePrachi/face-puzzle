@@ -43,25 +43,16 @@ FacePuzzle AI is a browser-based puzzle game that captures a photo using your de
 * MediaDevices API (getUserMedia)
 * Local Storage API
 
-## Screenshots
+## 📸 Preview
 
-### Home Screen
-
-
-### Difficulty Selection
-
-
+### Home Page
+![Home Page](screenshots/home-page.png)
 
 ### Gameplay
+![Gameplay](screenshots/gameplay.png)
 
-
-### Puzzle Completed
-
-
-
-### Leaderboard
-
-
+### Victory Screen
+![Victory Screen](screenshots/victory-screen.png)
 
 ## Installation
 
