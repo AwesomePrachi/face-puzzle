@@ -59,13 +59,13 @@ FacePuzzle AI is a browser-based puzzle game that captures a photo using your de
 Clone the repository:
 
 ```bash
-git clone https://github.com/your-username/face-puzzle-ai.git
+git clone https://github.com/your-username/face-puzzle.git
 ```
 
 Navigate to the project folder:
 
 ```bash
-cd face-puzzle-ai
+cd face-puzzle
 ```
 
 Open the application:
@@ -96,7 +96,7 @@ or use a local server.
 
 ## Live Demo
 
-Add your deployed link here.
+**Live URL:** https://face-puzzle-playground.vercel.app
 
 ## Author
 
