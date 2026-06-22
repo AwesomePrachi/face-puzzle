@@ -1,0 +1,1326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#7C3AED">
+<meta name="description" content="Take a selfie and solve an AI-generated sliding puzzle of your own face. Race the clock, earn a spot on the leaderboard.">
+<title>AI Face Puzzle — Solve Your Selfie</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/space-grotesk@latest/index.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/inter@latest/index.css">
+<style>
+/* ===================================================================
+   ROOT VARIABLES — LIGHT THEME (default)
+=================================================================== */
+:root{
+  --bg:#F5F2FF;
+  --bg-elevated:#FFFFFF;
+  --glass-bg: rgba(255,255,255,0.62);
+  --glass-bg-strong: rgba(255,255,255,0.86);
+  --glass-border: rgba(255,255,255,0.9);
+  --text:#1E1B2E;
+  --text-muted:#665F80;
+  --accent-1:#7C3AED;
+  --accent-2:#EC4899;
+  --accent-3:#F59E0B;
+  --accent-4:#22D3EE;
+  --success:#10B981;
+  --danger:#EF4444;
+  --amber:#F59E0B;
+  --shadow: 0 8px 32px rgba(54,30,110,0.14);
+  --shadow-lg: 0 24px 60px rgba(54,30,110,0.22);
+  --radius-lg:26px;
+  --radius-md:18px;
+  --radius-sm:12px;
+  --font-display:'Space Grotesk', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-body:'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+[data-theme="dark"]{
+  --bg:#0A0918;
+  --bg-elevated:#161329;
+  --glass-bg: rgba(34,29,62,0.55);
+  --glass-bg-strong: rgba(34,29,62,0.82);
+  --glass-border: rgba(255,255,255,0.09);
+  --text:#F3F1FF;
+  --text-muted:#A8A2C8;
+  --shadow: 0 8px 32px rgba(0,0,0,0.5);
+  --shadow-lg: 0 24px 70px rgba(0,0,0,0.6);
+}
+
+/* ===================================================================
+   RESET & BASE
+=================================================================== */
+*,*::before,*::after{ box-sizing:border-box; }
+html,body{ margin:0; padding:0; }
+html{ -webkit-text-size-adjust:100%; }
+body{
+  position:relative;
+  z-index:0;
+  min-height:100vh;
+  overflow-x:hidden;
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--font-body);
+  line-height:1.5;
+  transition:background-color .4s ease, color .4s ease;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{ font-family:var(--font-display); margin:0 0 .5rem; letter-spacing:-0.02em; }
+p{ margin:0 0 .75rem; color:var(--text-muted); }
+button{ font-family:inherit; }
+img{ max-width:100%; display:block; }
+a{ color:var(--accent-1); }
+::selection{ background:var(--accent-2); color:#fff; }
+
+/* Scrollbar polish */
+::-webkit-scrollbar{ width:10px; height:10px; }
+::-webkit-scrollbar-track{ background:transparent; }
+::-webkit-scrollbar-thumb{ background:var(--glass-border); border-radius:10px; }
+
+/* ===================================================================
+   ANIMATED BACKGROUND
+=================================================================== */
+.bg-blobs{ position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none; }
+.blob{ position:absolute; border-radius:50%; filter:blur(70px); opacity:.5; will-change:transform; }
+.b1{ width:560px; height:560px; background:radial-gradient(circle, var(--accent-1), transparent 70%); top:-160px; left:-120px; animation:float1 24s ease-in-out infinite; }
+.b2{ width:500px; height:500px; background:radial-gradient(circle, var(--accent-2), transparent 70%); bottom:-160px; right:-120px; animation:float2 28s ease-in-out infinite; }
+.b3{ width:440px; height:440px; background:radial-gradient(circle, var(--accent-3), transparent 70%); top:38%; left:55%; animation:float3 32s ease-in-out infinite; }
+.b4{ width:380px; height:380px; background:radial-gradient(circle, var(--accent-4), transparent 70%); top:10%; right:10%; animation:float2 20s ease-in-out infinite reverse; opacity:.35; }
+@keyframes float1{ 0%,100%{ transform:translate(0,0); } 50%{ transform:translate(70px,90px); } }
+@keyframes float2{ 0%,100%{ transform:translate(0,0); } 50%{ transform:translate(-80px,-60px); } }
+@keyframes float3{ 0%,100%{ transform:translate(-50%,0); } 50%{ transform:translate(-50%,70px) translateX(50px); } }
+
+/* ===================================================================
+   LAYOUT
+=================================================================== */
+.app{ position:relative; z-index:1; max-width:1080px; margin:0 auto; padding:20px 20px 64px; min-height:100vh; }
+.app-header{ display:flex; align-items:center; justify-content:space-between; padding:8px 4px 28px; }
+.logo{ display:flex; align-items:center; gap:.45rem; font-family:var(--font-display); font-weight:700; font-size:1.25rem; }
+.logo-ai{ background:linear-gradient(135deg,var(--accent-1),var(--accent-2)); -webkit-background-clip:text; background-clip:text; color:transparent; font-size:.85em; }
+.theme-toggle{
+  width:46px; height:46px; border-radius:50%; border:1px solid var(--glass-border);
+  background:var(--glass-bg); backdrop-filter:blur(12px); cursor:pointer; font-size:1.2rem;
+  display:flex; align-items:center; justify-content:center; transition:transform .25s ease, box-shadow .25s ease;
+  box-shadow:var(--shadow);
+}
+.theme-toggle:hover{ transform:rotate(20deg) scale(1.08); }
+.theme-toggle:active{ transform:scale(.9); }
+
+main{ position:relative; }
+
+.screen{ display:none; animation:fadeIn .45s ease; }
+.screen.active{ display:block; }
+@keyframes fadeIn{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:translateY(0); } }
+
+/* ===================================================================
+   GLASS CARD BASE
+=================================================================== */
+.glass{
+  background:var(--glass-bg);
+  border:1px solid var(--glass-border);
+  backdrop-filter:blur(20px) saturate(160%);
+  -webkit-backdrop-filter:blur(20px) saturate(160%);
+  box-shadow:var(--shadow);
+}
+
+/* ===================================================================
+   BUTTONS
+=================================================================== */
+.btn{
+  font-family:var(--font-body); font-weight:600; font-size:.95rem; color:var(--text);
+  padding:.85rem 1.5rem; border-radius:999px; border:none; cursor:pointer;
+  display:inline-flex; align-items:center; gap:.5rem; justify-content:center;
+  position:relative; overflow:hidden; isolation:isolate;
+  transition:transform .18s ease, box-shadow .18s ease, opacity .18s ease;
+  -webkit-tap-highlight-color:transparent;
+  white-space:nowrap;
+}
+.btn:active{ transform:scale(.96); }
+.btn-primary{ color:#fff; background:linear-gradient(135deg,var(--accent-1),var(--accent-2)); box-shadow:0 8px 22px rgba(124,58,237,.4); }
+.btn-primary:hover{ transform:translateY(-2px); box-shadow:0 12px 28px rgba(124,58,237,.5); }
+.btn-ghost{ background:var(--glass-bg); border:1px solid var(--glass-border); backdrop-filter:blur(10px); }
+.btn-ghost:hover{ transform:translateY(-2px); box-shadow:var(--shadow); }
+.btn-ghost:disabled{ opacity:.4; cursor:not-allowed; transform:none; box-shadow:none; }
+.btn-text{ background:none; color:var(--text-muted); text-decoration:underline; padding:.35rem .5rem; font-weight:500; box-shadow:none; }
+.btn-text:hover{ color:var(--accent-1); }
+.btn-lg{ padding:1.05rem 2.1rem; font-size:1.02rem; }
+.btn:focus-visible{ outline:3px solid var(--accent-1); outline-offset:2px; }
+.ripple{ position:absolute; border-radius:50%; background:rgba(255,255,255,.55); transform:scale(0); animation:rippleAnim .6s ease-out forwards; pointer-events:none; z-index:0; }
+@keyframes rippleAnim{ to{ transform:scale(2.6); opacity:0; } }
+
+/* ===================================================================
+   VIEWFINDER (signature motif — camera corner brackets)
+=================================================================== */
+.viewfinder{ position:relative; padding:16px; border-radius:var(--radius-lg); }
+.viewfinder .corner{ position:absolute; width:30px; height:30px; border:3px solid var(--accent-1); opacity:.9; z-index:2; }
+.viewfinder .corner.tl{ top:6px; left:6px; border-right:none; border-bottom:none; border-radius:8px 0 0 0; }
+.viewfinder .corner.tr{ top:6px; right:6px; border-left:none; border-bottom:none; border-radius:0 8px 0 0; border-color:var(--accent-2); }
+.viewfinder .corner.bl{ bottom:6px; left:6px; border-right:none; border-top:none; border-radius:0 0 0 8px; border-color:var(--accent-2); }
+.viewfinder .corner.br{ bottom:6px; right:6px; border-left:none; border-top:none; border-radius:0 0 8px 0; border-color:var(--accent-3); }
+
+/* ===================================================================
+   HERO / WELCOME SCREEN
+=================================================================== */
+.hero{ text-align:center; padding:24px 12px 8px; }
+.hero-viewfinder{ width:min(220px,60vw); aspect-ratio:1; margin:0 auto 28px; }
+.hero-inner{ width:100%; height:100%; border-radius:var(--radius-md); background:linear-gradient(135deg, color-mix(in srgb, var(--accent-1) 18%, transparent), color-mix(in srgb, var(--accent-2) 18%, transparent)); display:flex; align-items:center; justify-content:center; }
+.hero-emoji{ font-size:3.4rem; filter:drop-shadow(0 6px 14px rgba(0,0,0,.2)); }
+.hero h1{ font-size:clamp(1.7rem, 4.5vw, 2.6rem); max-width:640px; margin:0 auto .6rem; }
+.hero-sub{ max-width:480px; margin:0 auto 1.6rem; font-size:1.02rem; }
+.hero .btn-lg{ margin-bottom:.6rem; }
+#fileInput{ display:none; }
+
+.how-it-works{ display:flex; gap:16px; justify-content:center; flex-wrap:wrap; margin-top:40px; }
+.step{ flex:1 1 160px; max-width:200px; text-align:center; padding:18px 14px; border-radius:var(--radius-md); }
+.step-icon{ font-size:1.6rem; display:block; margin-bottom:.5rem; }
+.step p{ margin:0; font-size:.92rem; color:var(--text); }
+
+/* ===================================================================
+   CAMERA SCREEN
+=================================================================== */
+#screen-camera{ text-align:center; }
+.camera-viewfinder{ width:min(420px, 86vw); aspect-ratio:1; margin:0 auto 24px; background:#000; border-radius:var(--radius-lg); overflow:hidden; box-shadow:var(--shadow-lg); }
+.camera-viewfinder video{ width:100%; height:100%; object-fit:cover; transform:scaleX(-1); display:block; border-radius:calc(var(--radius-lg) - 16px); }
+.camera-loading{ position:absolute; inset:16px; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; background:rgba(10,8,20,.45); border-radius:calc(var(--radius-lg) - 16px); }
+.camera-loading[hidden]{ display:none; }
+.spinner{ width:34px; height:34px; border-radius:50%; border:3px solid rgba(255,255,255,.3); border-top-color:#fff; animation:spin .8s linear infinite; margin-bottom:10px; }
+@keyframes spin{ to{ transform:rotate(360deg); } }
+.camera-controls{ display:flex; align-items:center; justify-content:center; gap:18px; margin-bottom:14px; flex-wrap:wrap; }
+.aperture-btn{
+  width:84px; height:84px; border-radius:50%; cursor:pointer; position:relative;
+  background:conic-gradient(from 0deg, var(--accent-1), var(--accent-2), var(--accent-3), var(--accent-4), var(--accent-1));
+  border:4px solid rgba(255,255,255,.55); display:grid; place-items:center;
+  box-shadow:0 10px 28px rgba(124,58,237,.45);
+  transition:transform .18s ease, box-shadow .18s ease;
+}
+.aperture-btn::before{ content:''; width:60%; height:60%; border-radius:50%; background:var(--bg-elevated); transition:background-color .4s ease; }
+.aperture-btn:hover{ transform:scale(1.07) rotate(18deg); box-shadow:0 14px 34px rgba(124,58,237,.55); }
+.aperture-btn:active{ transform:scale(.9); }
+.aperture-btn:focus-visible{ outline:3px solid #fff; outline-offset:4px; }
+.camera-switch{ font-size:.85rem; padding:.65rem 1.1rem; }
+.camera-hint{ font-size:.92rem; }
+
+.error-panel{ max-width:440px; margin:30px auto 0; padding:36px 28px; border-radius:var(--radius-lg); text-align:center; }
+.error-icon{ font-size:2.4rem; margin-bottom:.6rem; }
+.error-panel .modal-actions{ margin-top:1.4rem; }
+
+/* ===================================================================
+   PREVIEW SCREEN
+=================================================================== */
+.preview-layout{ display:flex; gap:32px; align-items:flex-start; justify-content:center; flex-wrap:wrap; }
+.preview-viewfinder{ width:min(320px,80vw); flex:0 0 auto; }
+.preview-viewfinder img{ width:100%; aspect-ratio:1; object-fit:cover; border-radius:var(--radius-md); display:block; }
+.preview-side{ flex:1 1 320px; max-width:480px; }
+.preview-side h2{ font-size:1.4rem; margin-bottom:1rem; text-align:center; }
+
+.difficulty-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:1.4rem; }
+.diff-card{
+  display:flex; flex-direction:column; align-items:center; gap:6px; padding:18px 10px;
+  border-radius:var(--radius-md); border:1px solid var(--glass-border); background:var(--glass-bg);
+  backdrop-filter:blur(14px); cursor:pointer; transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+  color:var(--text);
+}
+.diff-card:hover{ transform:translateY(-4px); box-shadow:var(--shadow-lg); border-color:var(--accent-1); }
+.diff-card:active{ transform:translateY(-1px) scale(.98); }
+.diff-card:focus-visible{ outline:3px solid var(--accent-1); outline-offset:2px; }
+.diff-emoji{ font-size:1.3rem; }
+.mini-grid{ display:grid; gap:2px; width:54px; }
+.mini-grid span{ aspect-ratio:1; border-radius:3px; background:linear-gradient(135deg,var(--accent-1),var(--accent-2)); opacity:.85; }
+.diff-label{ font-family:var(--font-display); font-weight:700; font-size:1rem; margin-top:2px; }
+.diff-sub{ font-size:.78rem; color:var(--text-muted); }
+.preview-side .btn{ width:100%; }
+
+/* ===================================================================
+   GAME SCREEN — STATS BAR
+=================================================================== */
+.stats-bar{ display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:22px; }
+.stat-card{
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+  padding:14px 8px; border-radius:var(--radius-md); text-align:center;
+}
+.stat-icon{ font-size:1.15rem; }
+.stat-label{ font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); font-weight:600; }
+.stat-value{ font-family:var(--font-display); font-weight:700; font-size:1.05rem; }
+
+/* ===================================================================
+   PUZZLE BOARD
+=================================================================== */
+.board-wrap{ display:flex; justify-content:center; margin-bottom:22px; }
+.board-viewfinder{ display:inline-block; }
+#board{ position:relative; border-radius:14px; background:var(--bg-elevated); box-shadow:inset 0 0 0 1px var(--glass-border); }
+#board.no-anim .piece{ transition:none !important; }
+
+.piece{
+  position:absolute; box-sizing:border-box; border-radius:7px; overflow:hidden; cursor:grab;
+  background-repeat:no-repeat;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.18), 0 2px 6px rgba(0,0,0,.25);
+  transition:left .28s cubic-bezier(.2,.8,.2,1), top .28s cubic-bezier(.2,.8,.2,1), box-shadow .2s ease, transform .2s ease, outline-color .2s ease;
+  outline:3px solid transparent; outline-offset:-3px;
+  touch-action:none; user-select:none; -webkit-user-select:none;
+}
+.piece.correct{ outline-color:var(--success); box-shadow:inset 0 0 0 1px rgba(255,255,255,.1), 0 0 0 4px rgba(16,185,129,.22), 0 2px 6px rgba(0,0,0,.2); }
+.piece.dragging{ transition:none; z-index:50; cursor:grabbing; transform:scale(1.06); box-shadow:0 16px 30px rgba(0,0,0,.35); }
+.piece.selected{ outline-color:var(--accent-2); box-shadow:inset 0 0 0 1px rgba(255,255,255,.1), 0 0 0 5px rgba(236,72,153,.3); }
+.piece.hint-active{ animation:hintPulse 1.4s ease-in-out 1; z-index:40; }
+@keyframes hintPulse{
+  0%,100%{ outline-color:var(--amber); box-shadow:inset 0 0 0 1px rgba(255,255,255,.1), 0 0 0 0 rgba(245,158,11,.65); }
+  50%{ outline-color:var(--amber); box-shadow:inset 0 0 0 1px rgba(255,255,255,.1), 0 0 0 12px rgba(245,158,11,0); }
+}
+.piece:focus-visible{ outline-color:var(--accent-1); }
+.hint-ghost{ position:absolute; border:3px dashed var(--amber); border-radius:7px; pointer-events:none; box-sizing:border-box; animation:ghostFade 1.7s ease forwards; z-index:30; }
+@keyframes ghostFade{ 0%{ opacity:0; transform:scale(.85); } 15%{ opacity:1; transform:scale(1); } 78%{ opacity:1; } 100%{ opacity:0; } }
+
+.game-toolbar{ display:flex; justify-content:center; gap:12px; flex-wrap:wrap; }
+
+/* ===================================================================
+   LEADERBOARD
+=================================================================== */
+.leaderboard-section{ margin-top:46px; padding:26px 24px; border-radius:var(--radius-lg); }
+.leaderboard-section h2{ font-size:1.25rem; margin-bottom:1rem; text-align:center; }
+.leaderboard-list{ display:flex; flex-direction:column; gap:10px; }
+.lb-card{ display:flex; align-items:center; gap:14px; padding:12px 16px; border-radius:var(--radius-sm); }
+.lb-rank{ font-size:1.3rem; min-width:34px; text-align:center; font-family:var(--font-display); font-weight:700; }
+.lb-info{ flex:1; display:flex; flex-direction:column; gap:2px; min-width:0; }
+.lb-time{ font-family:var(--font-display); font-weight:700; font-size:1.05rem; }
+.lb-meta{ font-size:.8rem; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.lb-date{ font-size:.78rem; color:var(--text-muted); flex-shrink:0; }
+.empty-state{ text-align:center; padding:18px 8px; color:var(--text-muted); }
+.lb-footer{ text-align:center; margin-top:14px; }
+
+/* ===================================================================
+   VICTORY MODAL
+=================================================================== */
+.modal-overlay{
+  position:fixed; inset:0; z-index:1000; display:flex; align-items:center; justify-content:center; padding:20px;
+  background:rgba(8,6,18,.6); backdrop-filter:blur(8px);
+  opacity:0; visibility:hidden; transition:opacity .3s ease, visibility .3s ease;
+}
+.modal-overlay.active{ opacity:1; visibility:visible; }
+.modal-card{
+  width:min(440px,100%); max-height:90vh; overflow-y:auto; padding:32px 28px; border-radius:var(--radius-lg);
+  text-align:center; transform:scale(.9) translateY(14px); transition:transform .35s cubic-bezier(.2,.8,.2,1);
+  background:var(--glass-bg-strong); border:1px solid var(--glass-border); box-shadow:var(--shadow-lg);
+}
+.modal-overlay.active .modal-card{ transform:scale(1) translateY(0); }
+.polaroid{ background:#fff; padding:10px 10px 34px; border-radius:8px; box-shadow:0 12px 30px rgba(0,0,0,.3); transform:rotate(-2deg); width:min(200px,68%); margin:0 auto 1.2rem; }
+.polaroid img{ width:100%; aspect-ratio:1; object-fit:cover; border-radius:4px; }
+.polaroid-cap{ text-align:center; font-family:var(--font-display); color:#2b2b2b; margin-top:8px; font-size:.85rem; font-weight:700; }
+.victory-sub{ margin-bottom:1.3rem; }
+.victory-stats{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; text-align:left; margin-bottom:1rem; }
+.victory-stats div{ background:var(--glass-bg); border:1px solid var(--glass-border); border-radius:var(--radius-sm); padding:10px 12px; }
+.victory-stats span{ display:block; font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); margin-bottom:2px; }
+.victory-stats strong{ font-family:var(--font-display); font-size:1.05rem; }
+.new-record-badge{
+  display:inline-flex; align-items:center; gap:6px; background:linear-gradient(135deg,var(--accent-3),var(--accent-2));
+  color:#fff; font-weight:700; font-size:.85rem; padding:.5rem 1rem; border-radius:999px; margin-bottom:1rem;
+  animation:popIn .5s cubic-bezier(.34,1.56,.64,1);
+}
+.new-record-badge[hidden]{ display:none; }
+@keyframes popIn{ from{ transform:scale(.5); opacity:0; } to{ transform:scale(1); opacity:1; } }
+.modal-actions{ display:flex; flex-direction:column; gap:10px; margin-top:.6rem; }
+.modal-actions .btn{ width:100%; }
+
+/* ===================================================================
+   TOAST
+=================================================================== */
+.toast-container{ position:fixed; top:18px; left:50%; transform:translateX(-50%); z-index:1200; display:flex; flex-direction:column; gap:8px; align-items:center; pointer-events:none; width:min(90vw,400px); }
+.toast{
+  background:var(--bg-elevated); color:var(--text); padding:.7rem 1.2rem; border-radius:999px;
+  box-shadow:var(--shadow-lg); font-size:.88rem; border:1px solid var(--glass-border);
+  opacity:0; transform:translateY(-12px); transition:opacity .3s ease, transform .3s ease; text-align:center;
+}
+.toast.show{ opacity:1; transform:translateY(0); }
+.toast-error{ border-color:var(--danger); }
+
+/* ===================================================================
+   CONFETTI CANVAS
+=================================================================== */
+.confetti-canvas{ position:fixed; inset:0; z-index:1500; pointer-events:none; }
+
+footer.app-footer{ text-align:center; margin-top:48px; font-size:.8rem; color:var(--text-muted); }
+
+/* ===================================================================
+   RESPONSIVE
+=================================================================== */
+@media (max-width:880px){
+  .stats-bar{ grid-template-columns:repeat(3,1fr); }
+  .stat-card:nth-child(4),.stat-card:nth-child(5){ grid-column:span 1; }
+}
+@media (max-width:640px){
+  .app{ padding:16px 14px 50px; }
+  .stats-bar{ grid-template-columns:repeat(3,1fr); gap:8px; }
+  .stat-card{ padding:10px 6px; }
+  .stat-value{ font-size:.92rem; }
+  .difficulty-grid{ grid-template-columns:1fr; }
+  .preview-layout{ flex-direction:column; align-items:center; }
+  .victory-stats{ grid-template-columns:1fr 1fr; }
+  .hero h1{ font-size:1.6rem; }
+  .lb-meta{ max-width:160px; }
+}
+@media (min-width:641px){
+  .modal-actions{ flex-direction:row; flex-wrap:wrap; }
+  .modal-actions .btn{ width:auto; flex:1 1 auto; }
+}
+
+/* ===================================================================
+   ACCESSIBILITY
+=================================================================== */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{ animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; scroll-behavior:auto !important; }
+}
+:focus-visible{ outline:3px solid var(--accent-1); outline-offset:2px; }
+</style>
+</head>
+<body>
+
+<div class="bg-blobs" aria-hidden="true">
+  <span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span><span class="blob b4"></span>
+</div>
+
+<div class="app">
+
+  <header class="app-header">
+    <div class="logo">🧩 <span>FacePuzzle</span><span class="logo-ai">AI</span></div>
+    <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle dark mode" aria-pressed="false">🌙</button>
+  </header>
+
+  <main>
+
+    <!-- ============================= WELCOME ============================= -->
+    <section class="screen active" id="screen-welcome" aria-labelledby="welcomeTitle">
+      <div class="hero">
+        <div class="viewfinder hero-viewfinder">
+          <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+          <div class="hero-inner"><span class="hero-emoji">🧩📸</span></div>
+        </div>
+        <h1 id="welcomeTitle">Turn your face into a puzzle.</h1>
+        <p class="hero-sub">Snap a photo, pick a difficulty, and race the clock to put yourself back together.</p>
+        <div>
+          <button class="btn btn-primary btn-lg" id="btnEnableCamera" type="button">📷 Enable Camera</button>
+        </div>
+        <button class="btn-text" id="btnUploadInstead" type="button">or upload a photo instead</button>
+        <input type="file" id="fileInput" accept="image/*">
+      </div>
+      <div class="how-it-works">
+        <div class="step glass"><span class="step-icon">1️⃣</span><p>Take or upload a selfie</p></div>
+        <div class="step glass"><span class="step-icon">2️⃣</span><p>Choose your difficulty</p></div>
+        <div class="step glass"><span class="step-icon">3️⃣</span><p>Solve it before the clock runs out</p></div>
+      </div>
+    </section>
+
+    <!-- ============================= CAMERA ============================= -->
+    <section class="screen" id="screen-camera" aria-labelledby="cameraTitle">
+      <h2 id="cameraTitle" class="sr-title" style="text-align:center;">Center your face in the frame</h2>
+      <div class="viewfinder camera-viewfinder" style="position:relative;">
+        <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+        <video id="video" autoplay playsinline muted></video>
+        <div class="camera-loading" id="cameraLoading" hidden>
+          <div class="spinner"></div>
+          <p style="color:#fff;margin:0;">Starting camera…</p>
+        </div>
+      </div>
+      <div class="camera-controls">
+        <button class="aperture-btn" id="btnTakePhoto" type="button" aria-label="Take photo"></button>
+      </div>
+      <button class="btn btn-ghost camera-switch" id="btnSwitchCamera" type="button" hidden>🔁 Switch Camera</button>
+      <p class="camera-hint">Center your face in the frame and smile 🙂</p>
+    </section>
+
+    <!-- ============================= CAMERA ERROR ============================= -->
+    <section class="screen" id="screen-camera-error" aria-labelledby="errorTitle">
+      <div class="error-panel glass">
+        <div class="error-icon">🚫</div>
+        <h2 id="errorTitle">Camera access needed</h2>
+        <p id="errorMessage">We couldn't access your camera.</p>
+        <div class="modal-actions">
+          <button class="btn btn-primary" id="btnRetryCamera" type="button">🔄 Try Again</button>
+          <button class="btn btn-ghost" id="btnUploadInstead2" type="button">📁 Upload a Photo Instead</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================= PREVIEW + DIFFICULTY ============================= -->
+    <section class="screen" id="screen-preview" aria-labelledby="previewTitle">
+      <div class="preview-layout">
+        <div class="viewfinder preview-viewfinder">
+          <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+          <img id="previewImg" alt="Your captured photo">
+        </div>
+        <div class="preview-side">
+          <h2 id="previewTitle">Looking good! Pick your challenge:</h2>
+          <div class="difficulty-grid" id="difficultyGrid">
+            <button class="diff-card" type="button" data-grid="3">
+              <span class="diff-emoji">🟢</span>
+              <div class="mini-grid" data-grid="3"></div>
+              <span class="diff-label">Easy</span>
+              <span class="diff-sub">3×3 · 9 pieces</span>
+            </button>
+            <button class="diff-card" type="button" data-grid="4">
+              <span class="diff-emoji">🟡</span>
+              <div class="mini-grid" data-grid="4"></div>
+              <span class="diff-label">Medium</span>
+              <span class="diff-sub">4×4 · 16 pieces</span>
+            </button>
+            <button class="diff-card" type="button" data-grid="5">
+              <span class="diff-emoji">🔴</span>
+              <div class="mini-grid" data-grid="5"></div>
+              <span class="diff-label">Hard</span>
+              <span class="diff-sub">5×5 · 25 pieces</span>
+            </button>
+          </div>
+          <button class="btn btn-ghost" id="btnRetakePhoto" type="button">🔄 Retake Photo</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================= GAME ============================= -->
+    <section class="screen" id="screen-game" aria-labelledby="gameTitle">
+      <h2 id="gameTitle" class="sr-title" style="position:absolute;left:-9999px;">Puzzle in progress</h2>
+      <div class="stats-bar">
+        <div class="stat-card glass"><span class="stat-icon">⏱️</span><span class="stat-label">Time</span><span class="stat-value" id="statTime">00:00.0</span></div>
+        <div class="stat-card glass"><span class="stat-icon">🔄</span><span class="stat-label">Moves</span><span class="stat-value" id="statMoves">0</span></div>
+        <div class="stat-card glass"><span class="stat-icon">📊</span><span class="stat-label">Progress</span><span class="stat-value" id="statProgress">0%</span></div>
+        <div class="stat-card glass"><span class="stat-icon" id="statDiffIcon">🟢</span><span class="stat-label">Difficulty</span><span class="stat-value" id="statDifficulty">Easy</span></div>
+        <div class="stat-card glass"><span class="stat-icon">💡</span><span class="stat-label">Hints Left</span><span class="stat-value" id="statHints">3</span></div>
+      </div>
+      <div class="board-wrap">
+        <div class="viewfinder board-viewfinder">
+          <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+          <div id="board"></div>
+        </div>
+      </div>
+      <div class="game-toolbar">
+        <button class="btn btn-ghost" id="btnHint" type="button">💡 Hint (<span id="hintCount">3</span>)</button>
+        <button class="btn btn-ghost" id="btnShuffle" type="button">🔀 Shuffle Again</button>
+        <button class="btn btn-ghost" id="btnNewPhoto" type="button">📷 New Photo</button>
+      </div>
+    </section>
+
+    <!-- ============================= LEADERBOARD (persistent) ============================= -->
+    <section class="leaderboard-section glass" aria-labelledby="lbTitle">
+      <h2 id="lbTitle">🏆 Top 5 Records</h2>
+      <div class="leaderboard-list" id="leaderboardList"></div>
+      <div class="lb-footer">
+        <button class="btn-text" id="btnClearLeaderboard" type="button">clear leaderboard</button>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="app-footer">Built with HTML, CSS &amp; JavaScript — no frameworks, no backend.</footer>
+</div>
+
+<!-- ============================= VICTORY MODAL ============================= -->
+<div class="modal-overlay" id="victoryOverlay" role="dialog" aria-modal="true" aria-labelledby="victoryTitle">
+  <div class="modal-card victory-card" tabindex="-1">
+    <div class="polaroid">
+      <img id="victoryPhoto" alt="Your completed puzzle photo">
+      <div class="polaroid-cap">Solved! 🎉</div>
+    </div>
+    <h2 id="victoryTitle">Puzzle Complete!</h2>
+    <p class="victory-sub">You put yourself back together.</p>
+    <div id="vNewRecord" class="new-record-badge" hidden>🏆 New Leaderboard Record!</div>
+    <div class="victory-stats">
+      <div><span>Time</span><strong id="vTime">00:00.0</strong></div>
+      <div><span>Moves</span><strong id="vMoves">0</strong></div>
+      <div><span>Difficulty</span><strong id="vDifficulty">—</strong></div>
+      <div><span>Hints Used</span><strong id="vHints">0 / 3</strong></div>
+      <div style="grid-column:1/-1;"><span>Date Completed</span><strong id="vDate">—</strong></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="btnPlayAgain" type="button">▶ Play Again</button>
+      <button class="btn btn-ghost" id="btnModalNewPhoto" type="button">📷 New Photo</button>
+      <button class="btn btn-ghost" id="btnCloseModal" type="button">✕ Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer" aria-live="polite"></div>
+<canvas class="confetti-canvas" id="confettiCanvas" aria-hidden="true"></canvas>
+
+<script>
+(function(){
+  'use strict';
+
+  /* =================================================================
+     CONSTANTS
+  ================================================================= */
+  const DIFFICULTIES = {
+    3: { grid:3, key:'easy',   label:'Easy',   emoji:'🟢' },
+    4: { grid:4, key:'medium', label:'Medium', emoji:'🟡' },
+    5: { grid:5, key:'hard',   label:'Hard',   emoji:'🔴' }
+  };
+  const MAX_HINTS = 3;
+  const CAPTURE_RES = 900;
+  const LB_KEY = 'fpg_leaderboard_v1';
+  const THEME_KEY = 'fpg_theme_v1';
+  const TAP_THRESHOLD = 6;
+  const SCREENS = ['welcome','camera','camera-error','preview','game'];
+
+  /* =================================================================
+     STATE
+  ================================================================= */
+  const state = {
+    theme:'light',
+    stream:null,
+    facingMode:'user',
+    photoDataURL:null,
+    difficulty:null,
+    boardSize:0,
+    pieceSize:0,
+    order:[],
+    pieceEls:[],
+    selectedSlot:null,
+    moves:0,
+    hintsLeft:MAX_HINTS,
+    startTime:0,
+    elapsedMs:0,
+    timerId:null,
+    playing:false,
+    completed:false,
+    drag:null,
+    lastNewRecord:false
+  };
+
+  const dom = {};
+
+  function cacheDom(){
+    [
+      'screen-welcome','screen-camera','screen-camera-error','screen-preview','screen-game',
+      'video','cameraLoading','btnTakePhoto','btnEnableCamera','btnUploadInstead','btnUploadInstead2',
+      'fileInput','errorTitle','errorMessage','btnRetryCamera','btnSwitchCamera',
+      'previewImg','difficultyGrid','btnRetakePhoto',
+      'board','statTime','statMoves','statProgress','statDiffIcon','statDifficulty','statHints',
+      'btnHint','hintCount','btnShuffle','btnNewPhoto',
+      'victoryOverlay','victoryPhoto','vTime','vMoves','vDifficulty','vHints','vDate','vNewRecord',
+      'btnPlayAgain','btnModalNewPhoto','btnCloseModal',
+      'leaderboardList','btnClearLeaderboard','themeToggle','toastContainer','confettiCanvas'
+    ].forEach(id => { dom[id] = document.getElementById(id); });
+  }
+
+  /* =================================================================
+     SCREEN MANAGEMENT
+  ================================================================= */
+  function showScreen(name){
+    SCREENS.forEach(s => {
+      const el = dom['screen-' + s];
+      if(el) el.classList.toggle('active', s === name);
+    });
+  }
+
+  /* =================================================================
+     THEME
+  ================================================================= */
+  function setTheme(t){
+    state.theme = t;
+    document.documentElement.setAttribute('data-theme', t);
+    dom.themeToggle.textContent = t === 'dark' ? '☀️' : '🌙';
+    dom.themeToggle.setAttribute('aria-pressed', t === 'dark' ? 'true' : 'false');
+    try{ localStorage.setItem(THEME_KEY, t); }catch(e){}
+  }
+  function toggleTheme(){ setTheme(state.theme === 'dark' ? 'light' : 'dark'); }
+  function initTheme(){
+    let saved = null;
+    try{ saved = localStorage.getItem(THEME_KEY); }catch(e){}
+    if(!saved){
+      saved = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+    }
+    setTheme(saved);
+  }
+
+  /* =================================================================
+     TOAST
+  ================================================================= */
+  function showToast(msg, type){
+    type = type || 'info';
+    const toast = document.createElement('div');
+    toast.className = 'toast toast-' + type;
+    toast.textContent = msg;
+    dom.toastContainer.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('show'));
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => toast.remove(), 300);
+    }, 3400);
+  }
+
+  /* =================================================================
+     RIPPLE EFFECT (event delegation on all .btn elements)
+  ================================================================= */
+  function initRipple(){
+    document.addEventListener('pointerdown', function(e){
+      const btn = e.target.closest('.btn');
+      if(!btn) return;
+      const rect = btn.getBoundingClientRect();
+      const size = Math.max(rect.width, rect.height) * 1.4;
+      const ripple = document.createElement('span');
+      ripple.className = 'ripple';
+      ripple.style.width = size + 'px';
+      ripple.style.height = size + 'px';
+      ripple.style.left = (e.clientX - rect.left - size / 2) + 'px';
+      ripple.style.top = (e.clientY - rect.top - size / 2) + 'px';
+      btn.appendChild(ripple);
+      setTimeout(() => ripple.remove(), 650);
+    });
+  }
+
+  /* =================================================================
+     MINI GRID PREVIEWS (difficulty cards)
+  ================================================================= */
+  function buildMiniGrids(){
+    document.querySelectorAll('.mini-grid').forEach(function(grid){
+      const n = Number(grid.dataset.grid);
+      grid.style.gridTemplateColumns = 'repeat(' + n + ',1fr)';
+      grid.innerHTML = '';
+      for(let i = 0; i < n * n; i++){
+        grid.appendChild(document.createElement('span'));
+      }
+    });
+  }
+
+  /* =================================================================
+     CAMERA
+  ================================================================= */
+  async function startCamera(){
+    showScreen('camera');
+    dom.cameraLoading.hidden = false;
+    try{
+      const constraints = {
+        video:{ facingMode:state.facingMode, width:{ ideal:1280 }, height:{ ideal:1280 } },
+        audio:false
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      state.stream = stream;
+      dom.video.srcObject = stream;
+      await dom.video.play();
+      dom.cameraLoading.hidden = true;
+      checkMultipleCameras();
+    }catch(err){
+      dom.cameraLoading.hidden = true;
+      handleCameraError(err);
+    }
+  }
+
+  function stopCamera(){
+    if(state.stream){
+      state.stream.getTracks().forEach(t => t.stop());
+      state.stream = null;
+    }
+  }
+
+  function handleCameraError(err){
+    let title = 'Camera access needed';
+    let message = "We couldn't access your camera. You can try again or upload a photo instead.";
+    const name = err && err.name;
+    if(name === 'NotAllowedError' || name === 'PermissionDeniedError'){
+      title = 'Camera permission denied';
+      message = 'Allow camera access in your browser settings — look for a camera icon in the address bar — then try again.';
+    }else if(name === 'NotFoundError' || name === 'DevicesNotFoundError'){
+      title = 'No camera found';
+      message = "We couldn't find a camera on this device. Upload a photo instead and you're good to go.";
+    }else if(name === 'NotReadableError' || name === 'TrackStartError'){
+      title = 'Camera unavailable';
+      message = 'Your camera might be in use by another app. Close it and try again.';
+    }else if(name === 'OverconstrainedError'){
+      title = 'Camera unavailable';
+      message = 'Your camera does not support the requested settings. Try again or upload a photo instead.';
+    }else if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      title = 'Camera not supported';
+      message = 'This browser does not support camera access. Try a different browser, or upload a photo instead.';
+    }
+    dom.errorTitle.textContent = title;
+    dom.errorMessage.textContent = message;
+    showScreen('camera-error');
+  }
+
+  async function checkMultipleCameras(){
+    try{
+      if(!navigator.mediaDevices.enumerateDevices){ dom.btnSwitchCamera.hidden = true; return; }
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const cams = devices.filter(d => d.kind === 'videoinput');
+      dom.btnSwitchCamera.hidden = cams.length < 2;
+    }catch(e){
+      dom.btnSwitchCamera.hidden = true;
+    }
+  }
+
+  function switchCamera(){
+    state.facingMode = state.facingMode === 'user' ? 'environment' : 'user';
+    stopCamera();
+    startCamera();
+  }
+
+  function takePhoto(){
+    const video = dom.video;
+    if(!video.videoWidth){
+      showToast('Camera is still starting — give it a second.', 'info');
+      return;
+    }
+    const size = Math.min(video.videoWidth, video.videoHeight);
+    const sx = (video.videoWidth - size) / 2;
+    const sy = (video.videoHeight - size) / 2;
+    const canvas = document.createElement('canvas');
+    canvas.width = CAPTURE_RES;
+    canvas.height = CAPTURE_RES;
+    const ctx = canvas.getContext('2d');
+    if(state.facingMode === 'user'){
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+    }
+    ctx.drawImage(video, sx, sy, size, size, 0, 0, canvas.width, canvas.height);
+    state.photoDataURL = canvas.toDataURL('image/jpeg', 0.92);
+    stopCamera();
+    dom.previewImg.src = state.photoDataURL;
+    showScreen('preview');
+  }
+
+  function retakePhoto(){ startCamera(); }
+
+  function handleFileUpload(file){
+    if(!file || !file.type || file.type.indexOf('image/') !== 0){
+      showToast('Please choose an image file.', 'error');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = function(e){
+      const img = new Image();
+      img.onload = function(){
+        const size = Math.min(img.width, img.height);
+        const sx = (img.width - size) / 2;
+        const sy = (img.height - size) / 2;
+        const canvas = document.createElement('canvas');
+        canvas.width = CAPTURE_RES;
+        canvas.height = CAPTURE_RES;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, sx, sy, size, size, 0, 0, canvas.width, canvas.height);
+        state.photoDataURL = canvas.toDataURL('image/jpeg', 0.92);
+        dom.previewImg.src = state.photoDataURL;
+        showScreen('preview');
+      };
+      img.onerror = function(){ showToast('Could not load that image.', 'error'); };
+      img.src = e.target.result;
+    };
+    reader.onerror = function(){ showToast('Could not read that file.', 'error'); };
+    reader.readAsDataURL(file);
+  }
+
+  /* =================================================================
+     PUZZLE — BUILD & LAYOUT
+  ================================================================= */
+  function shuffleSolvable(n){
+    let arr;
+    do{
+      arr = Array.from({ length:n }, function(_, i){ return i; });
+      for(let i = n - 1; i > 0; i--){
+        const j = Math.floor(Math.random() * (i + 1));
+        const tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+      }
+    }while(isSolved(arr));
+    return arr;
+  }
+  function isSolved(arr){ return arr.every(function(v, i){ return v === i; }); }
+
+  function startGame(grid){
+    const diff = DIFFICULTIES[grid];
+    if(!diff) return;
+    state.difficulty = diff;
+    state.moves = 0;
+    state.hintsLeft = MAX_HINTS;
+    state.completed = false;
+    state.selectedSlot = null;
+    const n = grid * grid;
+    state.order = shuffleSolvable(n);
+    buildBoardDOM(grid);
+    layoutBoard(true);
+    updateStatsUI();
+    showScreen('game');
+    startTimer();
+    state.playing = true;
+  }
+
+  function buildBoardDOM(grid){
+    dom.board.innerHTML = '';
+    state.pieceEls = new Array(grid * grid);
+    for(let c = 0; c < grid * grid; c++){
+      const piece = document.createElement('div');
+      piece.className = 'piece';
+      piece.tabIndex = 0;
+      piece.dataset.correct = c;
+      piece.style.backgroundImage = 'url(' + state.photoDataURL + ')';
+      piece.setAttribute('role', 'button');
+      piece.setAttribute('aria-label', 'Puzzle piece ' + (c + 1) + ' of ' + (grid * grid));
+      bindPieceEvents(piece);
+      dom.board.appendChild(piece);
+      state.pieceEls[c] = piece;
+    }
+  }
+
+  function computeBoardSize(){
+    const grid = state.difficulty.grid;
+    const horizontalPad = window.innerWidth < 640 ? 56 : 96;
+    const maxByWidth = window.innerWidth - horizontalPad;
+    const maxByHeight = window.innerHeight * 0.5;
+    let size = Math.min(maxByWidth, maxByHeight, 560);
+    size = Math.max(grid * 56, size);
+    size = Math.floor(size / grid) * grid;
+    return size;
+  }
+
+  function layoutBoard(skipAnimation){
+    const grid = state.difficulty.grid;
+    state.boardSize = computeBoardSize();
+    state.pieceSize = state.boardSize / grid;
+    dom.board.style.width = state.boardSize + 'px';
+    dom.board.style.height = state.boardSize + 'px';
+    if(skipAnimation) dom.board.classList.add('no-anim');
+    for(let slot = 0; slot < grid * grid; slot++){
+      const correctIdx = state.order[slot];
+      positionPiece(state.pieceEls[correctIdx], correctIdx, slot, grid);
+    }
+    if(skipAnimation){
+      void dom.board.offsetWidth;
+      dom.board.classList.remove('no-anim');
+    }
+  }
+
+  function positionPiece(piece, correctIdx, slot, grid){
+    const homeRow = Math.floor(correctIdx / grid), homeCol = correctIdx % grid;
+    const slotRow = Math.floor(slot / grid), slotCol = slot % grid;
+    const ps = state.pieceSize;
+    piece.style.width = ps + 'px';
+    piece.style.height = ps + 'px';
+    piece.style.backgroundSize = state.boardSize + 'px ' + state.boardSize + 'px';
+    piece.style.backgroundPosition = (-homeCol * ps) + 'px ' + (-homeRow * ps) + 'px';
+    piece.style.left = (slotCol * ps) + 'px';
+    piece.style.top = (slotRow * ps) + 'px';
+    piece.classList.toggle('correct', correctIdx === slot);
+  }
+
+  function getSlotOf(correctIdx){ return state.order.indexOf(correctIdx); }
+
+  /* =================================================================
+     SWAP / WIN / STATS
+  ================================================================= */
+  function swapSlots(a, b){
+    if(a === b || a == null || b == null) return;
+    const grid = state.difficulty.grid;
+    const ca = state.order[a], cb = state.order[b];
+    state.order[a] = cb;
+    state.order[b] = ca;
+    positionPiece(state.pieceEls[cb], cb, a, grid);
+    positionPiece(state.pieceEls[ca], ca, b, grid);
+    state.moves++;
+    updateStatsUI();
+    if(checkWin()) onWin();
+  }
+
+  function checkWin(){ return state.order.every(function(v, i){ return v === i; }); }
+
+  function updateStatsUI(){
+    const grid = state.difficulty.grid;
+    const n = grid * grid;
+    const correct = state.order.filter(function(v, i){ return v === i; }).length;
+    dom.statMoves.textContent = state.moves;
+    dom.statProgress.textContent = Math.round((correct / n) * 100) + '%';
+    dom.statDiffIcon.textContent = state.difficulty.emoji;
+    dom.statDifficulty.textContent = state.difficulty.label;
+    dom.statHints.textContent = state.hintsLeft;
+    dom.hintCount.textContent = state.hintsLeft;
+    dom.btnHint.disabled = state.hintsLeft <= 0;
+  }
+
+  /* =================================================================
+     TIMER
+  ================================================================= */
+  function startTimer(){
+    state.startTime = Date.now();
+    state.elapsedMs = 0;
+    clearInterval(state.timerId);
+    state.timerId = setInterval(tick, 100);
+    tick();
+  }
+  function tick(){
+    state.elapsedMs = Date.now() - state.startTime;
+    dom.statTime.textContent = formatTime(state.elapsedMs);
+  }
+  function stopTimer(){
+    clearInterval(state.timerId);
+    state.timerId = null;
+  }
+  function formatTime(ms){
+    const totalTenths = Math.floor(ms / 100);
+    const tenths = totalTenths % 10;
+    const totalSeconds = Math.floor(totalTenths / 10);
+    const seconds = totalSeconds % 60;
+    const minutes = Math.floor(totalSeconds / 60);
+    return String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0') + '.' + tenths;
+  }
+
+  /* =================================================================
+     POINTER / TOUCH / MOUSE / KEYBOARD INTERACTION
+  ================================================================= */
+  function bindPieceEvents(piece){
+    piece.addEventListener('pointerdown', onPiecePointerDown);
+    piece.addEventListener('keydown', onPieceKeydown);
+  }
+
+  function onPiecePointerDown(e){
+    if(!state.playing || state.completed) return;
+    const piece = e.currentTarget;
+    try{ piece.setPointerCapture(e.pointerId); }catch(err){}
+    state.drag = {
+      piece:piece,
+      correctIdx:Number(piece.dataset.correct),
+      pointerId:e.pointerId,
+      startX:e.clientX,
+      startY:e.clientY,
+      originLeft:parseFloat(piece.style.left) || 0,
+      originTop:parseFloat(piece.style.top) || 0,
+      moved:false
+    };
+    piece.classList.add('dragging');
+    piece.addEventListener('pointermove', onPiecePointerMove);
+    piece.addEventListener('pointerup', onPiecePointerUp);
+    piece.addEventListener('pointercancel', onPiecePointerUp);
+  }
+
+  function onPiecePointerMove(e){
+    const d = state.drag;
+    if(!d || e.pointerId !== d.pointerId) return;
+    const dx = e.clientX - d.startX, dy = e.clientY - d.startY;
+    if(Math.abs(dx) + Math.abs(dy) > TAP_THRESHOLD) d.moved = true;
+    d.piece.style.left = (d.originLeft + dx) + 'px';
+    d.piece.style.top = (d.originTop + dy) + 'px';
+  }
+
+  function onPiecePointerUp(e){
+    const d = state.drag;
+    if(!d || e.pointerId !== d.pointerId) return;
+    try{ d.piece.releasePointerCapture(e.pointerId); }catch(err){}
+    d.piece.removeEventListener('pointermove', onPiecePointerMove);
+    d.piece.removeEventListener('pointerup', onPiecePointerUp);
+    d.piece.removeEventListener('pointercancel', onPiecePointerUp);
+    d.piece.classList.remove('dragging');
+    const grid = state.difficulty.grid;
+    const fromSlot = getSlotOf(d.correctIdx);
+
+    if(!d.moved){
+      state.drag = null;
+      handleTap(fromSlot);
+      return;
+    }
+
+    const boardRect = dom.board.getBoundingClientRect();
+    const pieceRect = d.piece.getBoundingClientRect();
+    const ps = state.pieceSize;
+    const cx = pieceRect.left + pieceRect.width / 2 - boardRect.left;
+    const cy = pieceRect.top + pieceRect.height / 2 - boardRect.top;
+    let col = Math.floor(cx / ps), row = Math.floor(cy / ps);
+    col = Math.min(grid - 1, Math.max(0, col));
+    row = Math.min(grid - 1, Math.max(0, row));
+    const targetSlot = row * grid + col;
+
+    state.drag = null;
+    if(targetSlot !== fromSlot){
+      swapSlots(fromSlot, targetSlot);
+    }else{
+      positionPiece(d.piece, d.correctIdx, fromSlot, grid);
+    }
+  }
+
+  function handleTap(slot){
+    if(slot == null || slot < 0) return;
+    const piece = state.pieceEls[state.order[slot]];
+    if(state.selectedSlot === null){
+      state.selectedSlot = slot;
+      piece.classList.add('selected');
+    }else if(state.selectedSlot === slot){
+      piece.classList.remove('selected');
+      state.selectedSlot = null;
+    }else{
+      const prevSlot = state.selectedSlot;
+      const prevPiece = state.pieceEls[state.order[prevSlot]];
+      prevPiece.classList.remove('selected');
+      state.selectedSlot = null;
+      swapSlots(prevSlot, slot);
+    }
+  }
+
+  function onPieceKeydown(e){
+    if(!state.playing || state.completed) return;
+    const piece = e.currentTarget;
+    const correctIdx = Number(piece.dataset.correct);
+    const slot = getSlotOf(correctIdx);
+    const grid = state.difficulty.grid;
+    if(e.key === 'Enter' || e.key === ' '){
+      e.preventDefault();
+      handleTap(slot);
+      return;
+    }
+    const row = Math.floor(slot / grid), col = slot % grid;
+    let target = null;
+    if(e.key === 'ArrowRight' && col < grid - 1) target = slot + 1;
+    else if(e.key === 'ArrowLeft' && col > 0) target = slot - 1;
+    else if(e.key === 'ArrowDown' && row < grid - 1) target = slot + grid;
+    else if(e.key === 'ArrowUp' && row > 0) target = slot - grid;
+    if(target !== null){
+      e.preventDefault();
+      state.pieceEls[state.order[target]].focus();
+    }
+  }
+
+  /* =================================================================
+     HINT SYSTEM
+  ================================================================= */
+  function useHint(){
+    if(state.hintsLeft <= 0 || state.completed || !state.playing) return;
+    const grid = state.difficulty.grid;
+    const incorrectSlots = [];
+    for(let s = 0; s < grid * grid; s++){ if(state.order[s] !== s) incorrectSlots.push(s); }
+    if(incorrectSlots.length === 0) return;
+    const slot = incorrectSlots[Math.floor(Math.random() * incorrectSlots.length)];
+    const correctIdx = state.order[slot];
+    const piece = state.pieceEls[correctIdx];
+    piece.classList.add('hint-active');
+    showHintGhost(correctIdx, grid);
+    state.hintsLeft--;
+    updateStatsUI();
+    showToast('💡 Watch the glowing tile — the dashed box shows its home.', 'info');
+    setTimeout(function(){ piece.classList.remove('hint-active'); }, 1600);
+  }
+
+  function showHintGhost(correctIdx, grid){
+    const homeRow = Math.floor(correctIdx / grid), homeCol = correctIdx % grid;
+    const ps = state.pieceSize;
+    const ghost = document.createElement('div');
+    ghost.className = 'hint-ghost';
+    ghost.style.width = ps + 'px';
+    ghost.style.height = ps + 'px';
+    ghost.style.left = (homeCol * ps) + 'px';
+    ghost.style.top = (homeRow * ps) + 'px';
+    dom.board.appendChild(ghost);
+    setTimeout(function(){ ghost.remove(); }, 1750);
+  }
+
+  /* =================================================================
+     SHUFFLE / NEW PHOTO / PLAY AGAIN
+  ================================================================= */
+  function shuffleAgain(){
+    if(!state.difficulty) return;
+    const n = state.difficulty.grid * state.difficulty.grid;
+    state.order = shuffleSolvable(n);
+    state.moves = 0;
+    state.hintsLeft = MAX_HINTS;
+    state.completed = false;
+    state.playing = true;
+    state.selectedSlot = null;
+    layoutBoard(false);
+    updateStatsUI();
+    startTimer();
+  }
+
+  function goNewPhoto(){
+    stopTimer();
+    state.playing = false;
+    hideVictoryModal();
+    startCamera();
+  }
+
+  function playAgain(){
+    hideVictoryModal();
+    shuffleAgain();
+  }
+
+  /* =================================================================
+     WIN HANDLING
+  ================================================================= */
+  function onWin(){
+    state.playing = false;
+    state.completed = true;
+    stopTimer();
+    if(state.selectedSlot !== null){
+      state.pieceEls[state.order[state.selectedSlot]].classList.remove('selected');
+      state.selectedSlot = null;
+    }
+    launchConfetti();
+    const hintsUsed = MAX_HINTS - state.hintsLeft;
+    const entry = {
+      date:Date.now(),
+      timeMs:state.elapsedMs,
+      moves:state.moves,
+      difficultyKey:state.difficulty.key,
+      difficultyLabel:state.difficulty.label,
+      difficultyEmoji:state.difficulty.emoji,
+      hints:hintsUsed
+    };
+    const board = saveScore(entry);
+    state.lastNewRecord = board.some(function(b){ return b.date === entry.date && b.timeMs === entry.timeMs; });
+    renderLeaderboard();
+    showVictoryModal(entry);
+  }
+
+  function showVictoryModal(entry){
+    dom.victoryPhoto.src = state.photoDataURL;
+    dom.vTime.textContent = formatTime(entry.timeMs);
+    dom.vMoves.textContent = entry.moves;
+    dom.vDifficulty.textContent = entry.difficultyEmoji + ' ' + entry.difficultyLabel;
+    dom.vHints.textContent = entry.hints + ' / ' + MAX_HINTS;
+    dom.vDate.textContent = new Date(entry.date).toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' });
+    dom.vNewRecord.hidden = !state.lastNewRecord;
+    dom.victoryOverlay.classList.add('active');
+    const card = dom.victoryOverlay.querySelector('.victory-card');
+    if(card) card.focus();
+  }
+  function hideVictoryModal(){ dom.victoryOverlay.classList.remove('active'); }
+
+  /* =================================================================
+     LEADERBOARD
+  ================================================================= */
+  function loadLeaderboard(){
+    try{ return JSON.parse(localStorage.getItem(LB_KEY)) || []; }catch(e){ return []; }
+  }
+  function saveScore(entry){
+    const board = loadLeaderboard();
+    board.push(entry);
+    board.sort(function(a, b){ return a.timeMs - b.timeMs; });
+    const top5 = board.slice(0, 5);
+    try{ localStorage.setItem(LB_KEY, JSON.stringify(top5)); }catch(e){}
+    return top5;
+  }
+  function renderLeaderboard(){
+    const board = loadLeaderboard();
+    if(board.length === 0){
+      dom.leaderboardList.innerHTML = '<p class="empty-state">No records yet — be the first to finish a puzzle! 🏁</p>';
+      return;
+    }
+    const medals = ['🥇', '🥈', '🥉'];
+    dom.leaderboardList.innerHTML = board.map(function(entry, i){
+      const rank = medals[i] || String(i + 1);
+      const dateStr = new Date(entry.date).toLocaleDateString(undefined, { month:'short', day:'numeric' });
+      return '<div class="lb-card glass">' +
+        '<span class="lb-rank">' + rank + '</span>' +
+        '<div class="lb-info">' +
+          '<span class="lb-time">' + formatTime(entry.timeMs) + '</span>' +
+          '<span class="lb-meta">' + entry.difficultyEmoji + ' ' + entry.difficultyLabel + ' · ' + entry.moves + ' moves · ' + entry.hints + ' hints</span>' +
+        '</div>' +
+        '<span class="lb-date">' + dateStr + '</span>' +
+      '</div>';
+    }).join('');
+  }
+  function clearLeaderboard(){
+    try{ localStorage.removeItem(LB_KEY); }catch(e){}
+    renderLeaderboard();
+    showToast('Leaderboard cleared.', 'info');
+  }
+
+  /* =================================================================
+     CONFETTI
+  ================================================================= */
+  function launchConfetti(){
+    const canvas = dom.confettiCanvas;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const ctx = canvas.getContext('2d');
+    const colors = ['#7C3AED', '#EC4899', '#F59E0B', '#22D3EE', '#10B981'];
+    const particles = Array.from({ length:140 }, function(){
+      return {
+        x:Math.random() * canvas.width,
+        y:-20 - Math.random() * canvas.height * 0.4,
+        w:6 + Math.random() * 6,
+        h:8 + Math.random() * 10,
+        color:colors[Math.floor(Math.random() * colors.length)],
+        vx:-2.2 + Math.random() * 4.4,
+        vy:2 + Math.random() * 2.5,
+        rot:Math.random() * 360,
+        vr:-8 + Math.random() * 16
+      };
+    });
+    const duration = 4200;
+    const start = performance.now();
+    function frame(t){
+      const elapsed = t - start;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const fade = Math.max(0, 1 - elapsed / duration);
+      particles.forEach(function(p){
+        p.x += p.vx; p.y += p.vy; p.vy += 0.045; p.rot += p.vr;
+        ctx.save();
+        ctx.globalAlpha = fade;
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot * Math.PI / 180);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
+      });
+      if(elapsed < duration){
+        requestAnimationFrame(frame);
+      }else{
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  /* =================================================================
+     RESIZE
+  ================================================================= */
+  let resizeTimer = null;
+  function onResize(){
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function(){
+      if(state.difficulty && dom['screen-game'].classList.contains('active')){
+        layoutBoard(true);
+      }
+    }, 150);
+  }
+
+  /* =================================================================
+     EVENT BINDING
+  ================================================================= */
+  function bindEvents(){
+    dom.btnEnableCamera.addEventListener('click', startCamera);
+    dom.btnUploadInstead.addEventListener('click', function(){ dom.fileInput.click(); });
+    dom.btnUploadInstead2.addEventListener('click', function(){ dom.fileInput.click(); });
+    dom.fileInput.addEventListener('change', function(e){
+      if(e.target.files && e.target.files[0]) handleFileUpload(e.target.files[0]);
+      e.target.value = '';
+    });
+    dom.btnTakePhoto.addEventListener('click', takePhoto);
+    dom.btnRetryCamera.addEventListener('click', startCamera);
+    dom.btnRetakePhoto.addEventListener('click', retakePhoto);
+    dom.btnSwitchCamera.addEventListener('click', switchCamera);
+    dom.difficultyGrid.addEventListener('click', function(e){
+      const card = e.target.closest('.diff-card');
+      if(card) startGame(Number(card.dataset.grid));
+    });
+    dom.btnHint.addEventListener('click', useHint);
+    dom.btnShuffle.addEventListener('click', shuffleAgain);
+    dom.btnNewPhoto.addEventListener('click', goNewPhoto);
+    dom.btnPlayAgain.addEventListener('click', playAgain);
+    dom.btnModalNewPhoto.addEventListener('click', goNewPhoto);
+    dom.btnCloseModal.addEventListener('click', hideVictoryModal);
+    dom.victoryOverlay.addEventListener('click', function(e){ if(e.target === dom.victoryOverlay) hideVictoryModal(); });
+    dom.btnClearLeaderboard.addEventListener('click', clearLeaderboard);
+    dom.themeToggle.addEventListener('click', toggleTheme);
+    window.addEventListener('resize', onResize);
+    document.addEventListener('keydown', function(e){ if(e.key === 'Escape') hideVictoryModal(); });
+  }
+
+  /* =================================================================
+     INIT
+  ================================================================= */
+  function init(){
+    cacheDom();
+    initTheme();
+    buildMiniGrids();
+    bindEvents();
+    initRipple();
+    renderLeaderboard();
+    showScreen('welcome');
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
+</body>
+</html>
